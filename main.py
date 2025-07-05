@@ -80,6 +80,10 @@ if 'iris_data' not in st.session_state:
     st.session_state.iris_data = None
 if 'housing_data' not in st.session_state:
     st.session_state.housing_data = None
+if 'classification_results' not in st.session_state:
+    st.session_state.classification_results = None
+if 'regression_results' not in st.session_state:
+    st.session_state.regression_results = None
 
 @st.cache_data
 def load_iris_data():
@@ -127,6 +131,20 @@ def train_classification_model(df, feature_names, model_type='RandomForest'):
     st.session_state.classification_model = model
     st.session_state.classification_scaler = scaler
     
+    # Calculate metrics
+    accuracy, cm, report, y_pred = get_classification_metrics(model, X_test_scaled, y_test)
+    
+    # Store results
+    st.session_state.classification_results = {
+        'accuracy': accuracy,
+        'cm': cm,
+        'report': report,
+        'y_pred': y_pred,
+        'y_test': y_test,
+        'X_test': X_test_scaled,
+        'model_type': model_type
+    }
+    
     return model, scaler, X_train_scaled, X_test_scaled, y_train, y_test
 
 def train_regression_model(df, feature_names, model_type='RandomForest'):
@@ -155,6 +173,20 @@ def train_regression_model(df, feature_names, model_type='RandomForest'):
     # Store in session state
     st.session_state.regression_model = model
     st.session_state.regression_scaler = scaler
+    
+    # Calculate metrics
+    mse, rmse, r2, y_pred = get_regression_metrics(model, X_test_scaled, y_test)
+    
+    # Store results
+    st.session_state.regression_results = {
+        'mse': mse,
+        'rmse': rmse,
+        'r2': r2,
+        'y_pred': y_pred,
+        'y_test': y_test,
+        'X_test': X_test_scaled,
+        'model_type': model_type
+    }
     
     return model, scaler, X_train_scaled, X_test_scaled, y_train, y_test
 
@@ -203,15 +235,35 @@ def create_housing_scatter_plot(df):
 
 def create_confusion_matrix_plot(cm, class_names):
     """Create confusion matrix visualization"""
-    fig = px.imshow(
-        cm,
-        labels=dict(x="Predicted", y="Actual", color="Count"),
+    # Create annotations for the confusion matrix
+    annotations = []
+    for i in range(len(class_names)):
+        for j in range(len(class_names)):
+            annotations.append(
+                dict(
+                    x=j, y=i,
+                    text=str(cm[i, j]),
+                    showarrow=False,
+                    font=dict(color="white" if cm[i, j] > cm.max() / 2 else "black")
+                )
+            )
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=cm,
         x=class_names,
         y=class_names,
-        color_continuous_scale='Blues',
-        title="Confusion Matrix"
+        colorscale='Blues',
+        showscale=True
+    ))
+    
+    fig.update_layout(
+        title="Confusion Matrix",
+        xaxis_title="Predicted",
+        yaxis_title="Actual",
+        annotations=annotations,
+        height=400
     )
-    fig.update_layout(height=400)
+    
     return fig
 
 def create_feature_importance_plot(model, feature_names):
@@ -367,36 +419,26 @@ def main():
                             iris_df, iris_features, model_type
                         )
                         
-                        accuracy, cm, report, y_pred = get_classification_metrics(
-                            model, X_test, y_test
-                        )
-                        
                         st.success(f"Model trained successfully!")
-                        st.metric("Accuracy", f"{accuracy:.3f}")
+                        st.metric("Accuracy", f"{st.session_state.classification_results['accuracy']:.3f}")
             
             # Display training results
-            if st.session_state.classification_model is not None:
+            if st.session_state.classification_results is not None:
                 st.markdown("---")
                 st.subheader("Training Results")
                 
-                accuracy, cm, report, y_pred = get_classification_metrics(
-                    st.session_state.classification_model, 
-                    st.session_state.classification_scaler.transform(
-                        iris_df[iris_features].iloc[int(0.7*len(iris_df)):].values
-                    ),
-                    iris_df['species'].iloc[int(0.7*len(iris_df)):].values
-                )
+                results = st.session_state.classification_results
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Accuracy", f"{accuracy:.3f}")
+                    st.metric("Accuracy", f"{results['accuracy']:.3f}")
                 with col2:
-                    st.metric("Precision", f"{report['weighted avg']['precision']:.3f}")
+                    st.metric("Precision", f"{results['report']['weighted avg']['precision']:.3f}")
                 with col3:
-                    st.metric("Recall", f"{report['weighted avg']['recall']:.3f}")
+                    st.metric("Recall", f"{results['report']['weighted avg']['recall']:.3f}")
                 
                 # Confusion matrix
-                fig_cm = create_confusion_matrix_plot(cm, iris_targets)
+                fig_cm = create_confusion_matrix_plot(results['cm'], iris_targets)
                 st.plotly_chart(fig_cm, use_container_width=True)
         
         with tab2:
@@ -506,39 +548,26 @@ def main():
                             housing_df, housing_features, model_type
                         )
                         
-                        mse, rmse, r2, y_pred = get_regression_metrics(
-                            model, X_test, y_test
-                        )
-                        
                         st.success(f"Model trained successfully!")
-                        st.metric("R² Score", f"{r2:.3f}")
+                        st.metric("R² Score", f"{st.session_state.regression_results['r2']:.3f}")
             
             # Display training results
-            if st.session_state.regression_model is not None:
+            if st.session_state.regression_results is not None:
                 st.markdown("---")
                 st.subheader("Training Results")
                 
-                # Get test data
-                X_test_sample = housing_df[housing_features].iloc[int(0.8*len(housing_df)):].values
-                y_test_sample = housing_df['MedHouseVal'].iloc[int(0.8*len(housing_df)):].values
-                X_test_scaled = st.session_state.regression_scaler.transform(X_test_sample)
-                
-                mse, rmse, r2, y_pred = get_regression_metrics(
-                    st.session_state.regression_model, 
-                    X_test_scaled,
-                    y_test_sample
-                )
+                results = st.session_state.regression_results
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("R² Score", f"{r2:.3f}")
+                    st.metric("R² Score", f"{results['r2']:.3f}")
                 with col2:
-                    st.metric("RMSE", f"{rmse:.3f}")
+                    st.metric("RMSE", f"{results['rmse']:.3f}")
                 with col3:
-                    st.metric("MSE", f"{mse:.3f}")
+                    st.metric("MSE", f"{results['mse']:.3f}")
                 
                 # Residual plot
-                fig_residual = create_residual_plot(y_test_sample, y_pred)
+                fig_residual = create_residual_plot(results['y_test'], results['y_pred'])
                 st.plotly_chart(fig_residual, use_container_width=True)
         
         with tab2:
@@ -634,6 +663,8 @@ def main():
                 st.write("- **Classes:** 3 (Setosa, Versicolor, Virginica)")
                 st.write("- **Features:** 4 numerical features")
                 st.write("- **Metric:** Accuracy")
+                if st.session_state.classification_results:
+                    st.metric("Current Accuracy", f"{st.session_state.classification_results['accuracy']:.3f}")
             else:
                 st.warning("❌ Model Not Trained")
         
@@ -645,6 +676,8 @@ def main():
                 st.write("- **Target:** Continuous house prices")
                 st.write("- **Features:** 8 numerical features")
                 st.write("- **Metric:** R² Score")
+                if st.session_state.regression_results:
+                    st.metric("Current R² Score", f"{st.session_state.regression_results['r2']:.3f}")
             else:
                 st.warning("❌ Model Not Trained")
         
@@ -719,7 +752,3 @@ def main():
         ---
         
         **Built for educational purposes to demonstrate ML model deployment.**
-        """)
-
-if __name__ == "__main__":
-    main()
