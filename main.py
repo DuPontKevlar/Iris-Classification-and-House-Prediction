@@ -751,4 +751,4 @@ def main():
         
         ---
         
-        **Built for educational purposes to demonstrate ML model deployment.**
+        **Built for educational purposes to demonstrate ML model deplyment**
