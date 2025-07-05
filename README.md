@@ -82,7 +82,7 @@ This application showcases two fundamental machine learning tasks:
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repository-url>
+   git clone <https://github.com/DuPontKevlar/Iris-Classification-and-House-Prediction>
    cd real-world-ml-deployment
    ```
 
@@ -264,7 +264,7 @@ If you encounter any issues or have questions:
 ### Quick Start Commands
 ```bash
 # Clone and setup
-git clone <your-repo-url>
+git clone <https://github.com/DuPontKevlar/Iris-Classification-and-House-Prediction>
 cd real-world-ml-deployment
 pip install -r requirements.txt
 
