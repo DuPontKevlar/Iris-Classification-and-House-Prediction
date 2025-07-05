@@ -752,3 +752,7 @@ def main():
         ---
         
         **Built for educational purposes to demonstrate ML model deplyment**
+        """)
+if __name__ == "__main__":
+    main()
+
