@@ -4,6 +4,8 @@
 
 A comprehensive web application that demonstrates machine learning model deployment using Streamlit, featuring both classification and regression tasks with real-world datasets.
 
+## Deplyment Link:  https://iris-classifier-and-house-predictor.streamlit.app
+
 ## 🎯 Overview
 
 This application showcases two fundamental machine learning tasks:
